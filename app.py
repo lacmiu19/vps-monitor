@@ -16,6 +16,39 @@ PASSWORD = os.environ.get('MONITOR_PASSWORD', '')
 PORT = int(os.environ.get('MONITOR_PORT', '8899'))
 
 
+# ── CPU Tracker (real utilization from /proc/stat) ────
+_cpu_lock = threading.Lock()
+_cpu_prev = None  # (idle, total) from last reading
+
+
+def _read_cpu_stat():
+    """Read aggregate CPU times from /proc/stat, return (idle, total)."""
+    with open('/proc/stat') as f:
+        line = f.readline()  # first line: cpu  user nice system idle iowait irq softirq steal
+    parts = line.split()
+    times = [int(x) for x in parts[1:]]
+    idle = times[3] + (times[4] if len(times) > 4 else 0)  # idle + iowait
+    total = sum(times)
+    return idle, total
+
+
+def get_cpu_percent():
+    """Return real CPU utilization % based on /proc/stat delta."""
+    global _cpu_prev
+    with _cpu_lock:
+        cur_idle, cur_total = _read_cpu_stat()
+        if _cpu_prev is None:
+            _cpu_prev = (cur_idle, cur_total)
+            return 0.0
+        prev_idle, prev_total = _cpu_prev
+        _cpu_prev = (cur_idle, cur_total)
+        d_total = cur_total - prev_total
+        d_idle = cur_idle - prev_idle
+        if d_total == 0:
+            return 0.0
+        return round((1 - d_idle / d_total) * 100, 1)
+
+
 # ── Database ──────────────────────────────────────────────
 
 def get_db():
@@ -183,14 +216,14 @@ def index():
 @app.route('/api/system')
 @check_auth
 def api_system():
-    # CPU load
+    # CPU usage (real utilization from /proc/stat delta)
     try:
         with open('/proc/loadavg') as f:
             parts = f.read().split()
         load1, load5, load15 = float(parts[0]), float(parts[1]), float(parts[2])
         with open('/proc/stat') as f:
             cpu_count = sum(1 for l in f if l.startswith('cpu') and l[3:4].isdigit())
-        cpu_pct = min(100, round(load1 / max(cpu_count, 1) * 100, 1))
+        cpu_pct = get_cpu_percent()
     except:
         load1 = load5 = load15 = 0
         cpu_count = 1
@@ -383,6 +416,11 @@ def logout():
 if __name__ == '__main__':
     os.makedirs(os.path.dirname(DB_PATH) or '.', exist_ok=True)
     init_db()
+    # Initialize CPU baseline so first API call gets real data
+    try:
+        _cpu_prev = _read_cpu_stat()
+    except:
+        pass
     t = threading.Thread(target=collector_loop, daemon=True)
     t.start()
     print(f"VPS Monitor starting on port {PORT}")
