@@ -359,8 +359,10 @@ def api_stats():
     })
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
+    if request.method == 'GET':
+        return redirect('/')
     pwd = request.form.get('password', '')
     if pwd == PASSWORD:
         resp = redirect('/')
