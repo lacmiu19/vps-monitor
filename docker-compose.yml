@@ -1,0 +1,12 @@
+services:
+  vps-monitor:
+    build: .
+    container_name: vps-monitor
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    environment:
+      - MONITOR_PORT=${MONITOR_PORT:-8899}
+      - MONITOR_PASSWORD=${MONITOR_PASSWORD:-changeme}
+    volumes:
+      - ./data:/data
