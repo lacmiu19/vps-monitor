@@ -62,17 +62,41 @@ tr:hover td{background:rgba(59,130,246,.05)}
 .top-ip-bar-fill{height:100%;background:var(--blue);border-radius:3px}
 
 /* Responsive */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 @media(max-width:768px){
   .stats-grid{grid-template-columns:repeat(2,1fr)}
-  .header .meta{gap:.75rem}
-  td,th{padding:.4rem .5rem}
-  .search-box{width:140px}
+  .header{padding:.5rem .75rem;flex-wrap:wrap;gap:.5rem}
+  .header h1{font-size:1rem}
+  .header .meta{gap:.5rem;font-size:.7rem}
+  .container{padding:.5rem}
+  .section-header{padding:.5rem .75rem;flex-wrap:wrap;gap:.5rem}
+  .section-header h2{font-size:.85rem}
+  td,th{padding:.4rem .5rem;font-size:.7rem}
+  .search-box{width:120px}
+  .proc-cmd{max-width:150px}
+  .top-ip-item{flex-wrap:wrap;gap:.4rem}
+  .top-ip-item .ip{width:auto;font-size:.75rem}
+  .top-ip-item .geo-tag{min-width:auto;font-size:.65rem}
+  .pagination{flex-wrap:wrap;gap:.5rem;padding:.5rem .75rem}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr;gap:.5rem}
+  .stat-card{padding:.75rem}
+  .stat-card .value{font-size:1.2rem}
+  .header .meta{width:100%;justify-content:space-between}
+  .proc-bar-wrap{width:40px}
+  .proc-cmd{max-width:100px;font-size:.65rem}
+  .top-ip-item .ip{font-size:.7rem}
+  .top-ip-item .hits{width:40px;font-size:.7rem}
+  .top-ip-item .port{font-size:.65rem;width:auto}
 }
 .empty{padding:2rem;text-align:center;color:var(--dim)}
 .tab-btn{padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--muted);cursor:pointer;font-size:.75rem;margin-left:4px;transition:all .2s}
 .tab-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .tab-btn:hover{border-color:var(--blue)}
-.proc-bar{display:inline-block;height:14px;border-radius:3px;min-width:2px;vertical-align:middle}
+.proc-cell{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.proc-bar-wrap{width:60px;flex-shrink:0;height:14px;background:var(--border);border-radius:3px;overflow:hidden}
+.proc-bar{display:block;height:100%;border-radius:3px;min-width:2px}
 .proc-cmd{font-family:'SF Mono',Consolas,monospace;font-size:.75rem;color:var(--muted);max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
@@ -248,7 +272,7 @@ async function loadActive() {
     $('activeTable').innerHTML = '<div class="empty">暂无活跃连接</div>';
     return;
   }
-  let html = '<table><thead><tr><th>远程 IP</th><th>远程端口</th><th>本地端口</th><th>位置</th><th>ISP</th></tr></thead><tbody>';
+  let html = '<div class="table-wrap"><table><thead><tr><th>远程 IP</th><th>远程端口</th><th>本地端口</th><th>位置</th><th>ISP</th></tr></thead><tbody>';
   data.forEach(c => {
     const geo = geoStr(c.geo);
     html += `<tr>
@@ -259,7 +283,7 @@ async function loadActive() {
       <td class="isp-tag">${c.geo?.isp || '-'}</td>
     </tr>`;
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   $('activeTable').innerHTML = html;
 }
 
@@ -308,7 +332,7 @@ async function loadHistory() {
     $('histTable').innerHTML = '<div class="empty">暂无历史记录</div>';
     return;
   }
-  let html = '<table><thead><tr><th>远程 IP</th><th>本地端口</th><th>首次连接</th><th>最后连接</th><th>连接次数</th><th>位置</th><th>ISP</th></tr></thead><tbody>';
+  let html = '<div class="table-wrap"><table><thead><tr><th>远程 IP</th><th>本地端口</th><th>首次连接</th><th>最后连接</th><th>连接次数</th><th>位置</th><th>ISP</th></tr></thead><tbody>';
   d.data.forEach(r => {
     const geo = geoStr(r.geo);
     html += `<tr>
@@ -321,7 +345,7 @@ async function loadHistory() {
       <td class="isp-tag">${r.geo?.isp || '-'}</td>
     </tr>`;
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   $('histTable').innerHTML = html;
 }
 
@@ -355,21 +379,20 @@ async function loadProcesses() {
   }
   const isCpu = procSort === 'cpu';
   const maxVal = Math.max(...data.map(p => isCpu ? p.cpu : p.mem), 0.1);
-  let html = '<table><thead><tr><th>PID</th><th>用户</th><th>CPU%</th><th>内存%</th><th>内存占用</th><th style="width:40%">进程</th></tr></thead><tbody>';
+  let html = '<div class="table-wrap"><table><thead><tr><th>PID</th><th>用户</th><th>CPU%</th><th>内存%</th><th>内存占用</th><th style="width:40%">进程</th></tr></thead><tbody>';
   data.forEach(p => {
     const val = isCpu ? p.cpu : p.mem;
     const pct = Math.min(100, val / maxVal * 100);
-    const color = val > 50 ? 'var(--red)' : val > 20 ? 'var(--orange)' : 'var(--blue)';
     html += `<tr>
       <td class="port">${p.pid}</td>
       <td>${p.user}</td>
-      <td><span class="proc-bar" style="width:${isCpu ? pct : p.cpu/maxVal*100}%;background:var(--orange)"></span> ${p.cpu}%</td>
-      <td><span class="proc-bar" style="width:${isCpu ? p.mem/maxVal*100 : pct}%;background:var(--blue)"></span> ${p.mem}%</td>
+      <td><div class="proc-cell"><div class="proc-bar-wrap"><span class="proc-bar" style="width:${isCpu ? pct : Math.min(100,p.cpu/maxVal*100)}%;background:var(--orange)"></span></div>${p.cpu}%</div></td>
+      <td><div class="proc-cell"><div class="proc-bar-wrap"><span class="proc-bar" style="width:${isCpu ? Math.min(100,p.mem/maxVal*100) : pct}%;background:var(--blue)"></span></div>${p.mem}%</div></td>
       <td class="port">${fmtBytes(p.rss)}</td>
       <td class="proc-cmd" title="${p.command}">${p.command}</td>
     </tr>`;
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   $('procTable').innerHTML = html;
 }
 
