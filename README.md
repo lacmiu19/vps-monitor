@@ -15,7 +15,7 @@
 ## 部署
 
 ```bash
-git clone https://github.com/semisavanna/vps-monitor.git
+git clone https://github.com/lacmiu19/vps-monitor.git
 cd vps-monitor
 cp .env.example .env
 # 编辑 .env 设置密码
